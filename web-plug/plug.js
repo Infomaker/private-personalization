@@ -18,10 +18,12 @@ const addPluginStyle = () => {
   const styleElement = document.createElement('style')
   styleElement.textContent = `
     .ALH__classifier-container {
-      height: 20px;
+      height: 10px;
       width: 100px;
-      border: 1px solid black;
       box-sizing: border-box;
+      display: inline-block;
+      position: absolute;
+      border-radius: 0.25em;
     }
 
     .ALH__classifier-unit {
@@ -29,15 +31,15 @@ const addPluginStyle = () => {
       display: inline-block;
     }
 
-    .classifier-unit.positive {
+    .ALH__classifier-unit.interesting {
       background-color: green;
     }
 
-    .classifier-unit.neutral {
-      background-color: #fefefe;
+    .ALH__classifier-unit.neutral {
+      background-color: yellow;
     }
 
-    .classifier-unit.negative {
+    .ALH__classifier-unit.not-interesting {
       background-color: red;
     }
   `
@@ -91,22 +93,41 @@ const renderAllVotes = () => {
 }
 
 const renderAllClassificationScores = (classifiedArticles) => {
-
   Object.keys(classifiedArticles).map(id => {
     const classificationScoreElements = document.querySelectorAll(`.ALH__classification-score.ALH__article-id-${id}`)
     classificationScoreElements.forEach(classificationScoreElement => {
       const probabilities = classifiedArticles[id]
       const probabilitySum =
         probabilities.neutral +
-        probabilities.positive +
-        probabilities.negative
+        probabilities.interesting +
+        probabilities.notInteresting
 
       const probabilityPercentages = {
-        positive: `${Math.floor(probabilities.positive / probabilitySum * 10000)/100}%`,
+        interesting: `${Math.floor(probabilities.interesting / probabilitySum * 10000)/100}%`,
         neutral: `${Math.floor(probabilities.neutral / probabilitySum * 10000)/100}%`,
-        negative: `${Math.floor(probabilities.negative / probabilitySum * 10000)/100}%`
+        notInteresting: `${Math.floor(probabilities.notInteresting / probabilitySum * 10000)/100}%`
       }
-      classificationScoreElement.innerHTML = JSON.stringify(probabilityPercentages)
+
+      const classifierContainerElement = document.createElement('div')
+      classifierContainerElement.classList.add('ALH__classifier-container')
+
+      const classifierInterestingElement = document.createElement('div')
+      classifierInterestingElement.classList.add('ALH__classifier-unit', 'interesting')
+      classifierInterestingElement.style.width = probabilityPercentages.interesting
+
+      const classifierNeutralElement = document.createElement('div')
+      classifierNeutralElement.classList.add('ALH__classifier-unit', 'neutral')
+      classifierNeutralElement.style.width = probabilityPercentages.neutral
+
+      const classifierNotInterestingElement = document.createElement('div')
+      classifierNotInterestingElement.classList.add('ALH__classifier-unit', 'not-interesting')
+      classifierNotInterestingElement.style.width = probabilityPercentages.notInteresting
+
+      classifierContainerElement.appendChild(classifierInterestingElement)
+      classifierContainerElement.appendChild(classifierNeutralElement)
+      classifierContainerElement.appendChild(classifierNotInterestingElement)
+
+      classificationScoreElement.innerHTML = classifierContainerElement.outerHTML
     })
   })
 }
@@ -127,14 +148,15 @@ const trainModelOnVotedArticlesAndReturnTrainedClassifiers = () => {
   }
 
   articleIds.forEach(articleId => {
+    const article = votedArticles[articleId]
+    console.log('Learning from article', {
+      articleId,
+      vote: article.vote,
+      title: article.articleData.title,
+      tags: article.articleData.tags,
+      body: article.articleData.body
+    })
     Object.keys(classifiers).forEach(classifierType => {
-      const article = votedArticles[articleId]
-      console.log('Learning from article', {
-        articleId,
-        vote: article.vote,
-        tags: article.articleData.tags
-      })
-
       const stringToClassify = article.articleData[classifierType] || ''
 
       if (article.vote === 0) {
@@ -144,13 +166,13 @@ const trainModelOnVotedArticlesAndReturnTrainedClassifiers = () => {
 
       if (article.vote > 0) {
         for (let i = 0; i < Math.abs(article.vote); i++) {
-          classifiers[classifierType].learn('positive', nbayes.stringToDoc(stringToClassify))
+          classifiers[classifierType].learn('interesting', nbayes.stringToDoc(stringToClassify))
         }
       }
 
       if (article.vote < 0) {
         for (let i = 0; i < Math.abs(article.vote); i++) {
-          classifiers[classifierType].learn('negative', nbayes.stringToDoc(stringToClassify))
+          classifiers[classifierType].learn('notInteresting', nbayes.stringToDoc(stringToClassify))
         }
       }
     })
@@ -174,26 +196,19 @@ const classifyArticles = (articlesToClassify, trainedClassifiers) => {
 
     Object.keys(probablilities).forEach(classifierType => {
       const prob = probablilities[classifierType]
-      probablilities[classifierType].positive = prob.positive || 0
+      probablilities[classifierType].interesting = prob.interesting || 0
       probablilities[classifierType].neutral = prob.neutral || 0
-      probablilities[classifierType].negative = prob.negative || 0
+      probablilities[classifierType].notInteresting = prob.notInteresting || 0
     })
 
     const weightedProbabilities = {
       neutral: probablilities.title.neutral + probablilities.tags.neutral + probablilities.body.neutral,
-      positive: probablilities.title.positive + probablilities.tags.positive + probablilities.body.positive,
-      negative: probablilities.title.negative + probablilities.tags.negative + probablilities.body.negative,
+      interesting: probablilities.title.interesting + probablilities.tags.interesting + probablilities.body.interesting,
+      notInteresting: probablilities.title.notInteresting + probablilities.tags.notInteresting + probablilities.body.notInteresting,
     }
-    console.log('probabilities', probablilities)
-    console.log('weighted', weightedProbabilities)
-
 
     classifiedArticles[articleId] = weightedProbabilities
   })
-
-  // todo: find highest probability
-  // const classiefiedArtieclesArray = Object.keys(classifiedArticles).map(classifiedArticle => classifiedArticle)
-  // const highestScore2 = Math.max.apply(Math, myArr.map(x => Math.max(x.positive || 0, x.neutral || 0, x.negative || 0)))
 
   const highestProbability = Object.keys(classifiedArticles).map(key => classifiedArticles[key]).reduce((maxValue, articleProb) => {
     let localMax = maxValue
@@ -202,12 +217,12 @@ const classifyArticles = (articlesToClassify, trainedClassifiers) => {
       localMax = articleProb.neutral
     }
 
-    if (articleProb.negative > localMax) {
-      localMax = articleProb.negative
+    if (articleProb.notInteresting > localMax) {
+      localMax = articleProb.notInteresting
     }
 
-    if (articleProb.positive > localMax) {
-      localMax = articleProb.positive
+    if (articleProb.interesting > localMax) {
+      localMax = articleProb.interesting
     }
 
     return localMax
@@ -222,8 +237,8 @@ const classifyArticles = (articlesToClassify, trainedClassifiers) => {
     const classifiedArticle = classifiedArticles[key]
     normalizedClassifiedArticles[key] = {
       neutral: classifiedArticle.neutral * compensationFactor,
-      positive: classifiedArticle.positive * compensationFactor,
-      negative: classifiedArticle.negative * compensationFactor
+      interesting: classifiedArticle.interesting * compensationFactor,
+      notInteresting: classifiedArticle.notInteresting * compensationFactor
     }
   })
 
@@ -340,7 +355,8 @@ const onStartPageLoad = () => {
     if (linkArticle) {
       const voteResultElement = createArticleVoteResultElement(linkArticle)
       const classificationScoreElement = createArticleClassificationScore(linkArticle)
-      link.innerHTML = voteResultElement.outerHTML + link.innerHTML + classificationScoreElement.outerHTML
+      link.innerHTML = voteResultElement.outerHTML + link.innerHTML
+      link.parentElement.appendChild(classificationScoreElement)
     }
   })
   const classifiedArticles = classifyArticles(allArticlesOnPage, trainedClassifiers)

@@ -6,8 +6,43 @@ const ID_PREFIX = 'https://24kalmar.se'
 
 
 // Set initial localStorage
-if (!ls.getItem('articleVotes')) {
-  ls.setItem('articleVotes', {})
+const localStorageActive = Boolean(localStorage.getItem('articleVotes'))
+if (!localStorageActive) {
+  console.log('Could not find stuff in localstorage, PANIC!')
+  localStorage.setItem('articleVotes', '{}')
+} else {
+  console.log('Found it in localstorage, PANIC ANYWAYS!')
+}
+
+const addPluginStyle = () => {
+  const styleElement = document.createElement('style')
+  styleElement.textContent = `
+    .ALH__classifier-container {
+      height: 20px;
+      width: 100px;
+      border: 1px solid black;
+      box-sizing: border-box;
+    }
+
+    .ALH__classifier-unit {
+      height: 100%;
+      display: inline-block;
+    }
+
+    .classifier-unit.positive {
+      background-color: green;
+    }
+
+    .classifier-unit.neutral {
+      background-color: #fefefe;
+    }
+
+    .classifier-unit.negative {
+      background-color: red;
+    }
+  `
+  const headElement = document.querySelector('head')
+  headElement.appendChild(styleElement)
 }
 
 const createArticleClassificationScore = (article) => {
@@ -61,7 +96,17 @@ const renderAllClassificationScores = (classifiedArticles) => {
     const classificationScoreElements = document.querySelectorAll(`.ALH__classification-score.ALH__article-id-${id}`)
     classificationScoreElements.forEach(classificationScoreElement => {
       const probabilities = classifiedArticles[id]
-      classificationScoreElement.innerHTML = JSON.stringify(probabilities)
+      const probabilitySum =
+        probabilities.neutral +
+        probabilities.positive +
+        probabilities.negative
+
+      const probabilityPercentages = {
+        positive: `${Math.floor(probabilities.positive / probabilitySum * 10000)/100}%`,
+        neutral: `${Math.floor(probabilities.neutral / probabilitySum * 10000)/100}%`,
+        negative: `${Math.floor(probabilities.negative / probabilitySum * 10000)/100}%`
+      }
+      classificationScoreElement.innerHTML = JSON.stringify(probabilityPercentages)
     })
   })
 }
@@ -127,11 +172,21 @@ const classifyArticles = (articlesToClassify, trainedClassifiers) => {
       body: trainedClassifiers['body'].probabilities(nbayes.stringToDoc(article['body']))
     }
 
+    Object.keys(probablilities).forEach(classifierType => {
+      const prob = probablilities[classifierType]
+      probablilities[classifierType].positive = prob.positive || 0
+      probablilities[classifierType].neutral = prob.neutral || 0
+      probablilities[classifierType].negative = prob.negative || 0
+    })
+
     const weightedProbabilities = {
       neutral: probablilities.title.neutral + probablilities.tags.neutral + probablilities.body.neutral,
       positive: probablilities.title.positive + probablilities.tags.positive + probablilities.body.positive,
       negative: probablilities.title.negative + probablilities.tags.negative + probablilities.body.negative,
     }
+    console.log('probabilities', probablilities)
+    console.log('weighted', weightedProbabilities)
+
 
     classifiedArticles[articleId] = weightedProbabilities
   })
@@ -308,6 +363,8 @@ const onPageChange = () => {
     }
   }, 500)
 }
+
+addPluginStyle()
 
 onPageChange()
 

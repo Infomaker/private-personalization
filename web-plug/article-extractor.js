@@ -19,13 +19,15 @@ const convertNodeToArticle = (node) => {
 
   const tempDiv = document.createElement('div')
   tempDiv.innerHTML = node.body
-  const strippedBody = tempDiv.innerText
+  const strippedBody = tempDiv.textContent
+
+  const joinedTags = Array.from(tags).join(' ')
 
   return {
     id: `${node.slug}`,
-    body: strippedBody, // TODO: Strip HTML
-    title: node.headline.trim(),
-    tags: Array.from(tags).join(' ')
+    body: strippedBody || 'i-really-like-empty-bodies',
+    title: node.headline ? node.headline.trim(): 'i-really-like-no-title',
+    tags: joinedTags.length ? joinedTags : 'i-really-like-your-lack-of-tags'
   }
 }
 

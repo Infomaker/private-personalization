@@ -16,9 +16,14 @@ const convertNodeToArticle = (node) => {
   const tags = new Set()
   node.tags.forEach(tag => tags.add(tag.toLowerCase()))
   node.categories.forEach(category => tags.add(category.toLowerCase()))
+
+  const tempDiv = document.createElement('div')
+  tempDiv.innerHTML = node.body
+  const strippedBody = tempDiv.innerText
+
   return {
     id: `${node.slug}`,
-    body: node.body, // TODO: Strip HTML
+    body: strippedBody, // TODO: Strip HTML
     title: node.headline.trim(),
     tags: Array.from(tags).join(' ')
   }

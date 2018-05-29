@@ -1,4 +1,4 @@
-const nbayes = require('nbayes')  //https://github.com/derhuerst/nbayes
+const nbayes = require('nbayes') //https://github.com/derhuerst/nbayes
 const articleExtractor = require('./article-extractor')
 const ls = require('./localstorage-wrapper')
 
@@ -6,7 +6,7 @@ const ID_PREFIX = 'https://24kalmar.se'
 
 
 // Set initial localStorage
-if(!ls.getItem('articleVotes')){
+if (!ls.getItem('articleVotes')) {
   ls.setItem('articleVotes', {})
 }
 
@@ -56,7 +56,7 @@ const renderAllVotes = () => {
 }
 
 const renderAllClassificationScores = (classifiedArticles) => {
-  
+
   Object.keys(classifiedArticles).map(id => {
     const classificationScoreElements = document.querySelectorAll(`.ALH__classification-score.ALH__article-id-${id}`)
     classificationScoreElements.forEach(classificationScoreElement => {
@@ -66,7 +66,7 @@ const renderAllClassificationScores = (classifiedArticles) => {
   })
 }
 
-const trainModelOnVotedArticlesAndReturnTrainedClassifier = () => {
+const trainModelOnVotedArticlesAndReturnTrainedClassifiers = () => {
   const votedArticles = ls.getItem('articleVotes')
   const startTime = Date.now()
   const articleIds = Object.keys(votedArticles)
@@ -75,78 +75,90 @@ const trainModelOnVotedArticlesAndReturnTrainedClassifier = () => {
     articleIds
   })
 
-  const classifier = nbayes()
+  const classifiers = {
+    title: nbayes(),
+    tags: nbayes(),
+    body: nbayes()
+  }
 
   articleIds.forEach(articleId => {
-    const article = votedArticles[articleId]
-    console.log('Learning from article', {
-      articleId,
-      vote : article.vote,
-      title : article.articleData.title
+    Object.keys(classifiers).forEach(classifierType => {
+      const article = votedArticles[articleId]
+      console.log('Learning from article', {
+        articleId,
+        vote: article.vote,
+        tags: article.articleData.tags
+      })
+
+      const stringToClassify = article.articleData[classifierType] || ''
+
+      if (article.vote === 0) {
+        classifiers[classifierType].learn('neutral', nbayes.stringToDoc(stringToClassify))
+
+      }
+
+      if (article.vote > 0) {
+        for (let i = 0; i < Math.abs(article.vote); i++) {
+          classifiers[classifierType].learn('positive', nbayes.stringToDoc(stringToClassify))
+        }
+      }
+
+      if (article.vote < 0) {
+        for (let i = 0; i < Math.abs(article.vote); i++) {
+          classifiers[classifierType].learn('negative', nbayes.stringToDoc(stringToClassify))
+        }
+      }
     })
 
-    if(article.vote === 0){
-      console.log('rösta neutral')
-      classifier.learn('neutral', nbayes.stringToDoc(article.articleData.title))
-    }
-
-    if(article.vote > 0){
-      for(let i = 0; i < Math.abs(article.vote); i++){
-        console.log('rösta positiv')
-        classifier.learn('positive', nbayes.stringToDoc(article.articleData.title))
-      }
-    }
-
-    if(article.vote < 0){
-      for(let i = 0; i < Math.abs(article.vote); i++){
-        console.log('rösta negative')
-        classifier.learn('negative', nbayes.stringToDoc(article.articleData.title))
-      }
-    }
+    console.log('Done learning!', {
+      time: `${Date.now() - startTime}ms`
+    })
   })
-
-  console.log('Done learning!', {
-    time : `${Date.now() - startTime}ms`
-  })
-  return classifier
+  return classifiers
 }
 
-const classifyArticles = (articlesToClassify, trainedClassifier) => {
+const classifyArticles = (articlesToClassify, trainedClassifiers) => {
   const classifiedArticles = {}
   Object.keys(articlesToClassify).forEach(articleId => {
     const article = articlesToClassify[articleId]
-    const probablilities = trainedClassifier.probabilities(nbayes.stringToDoc(article.title))
-    classifiedArticles[articleId] = probablilities
+    const probablilities = {
+      title: trainedClassifiers['title'].probabilities(nbayes.stringToDoc(article['title'])),
+      tags: trainedClassifiers['tags'].probabilities(nbayes.stringToDoc(article['tags'])),
+      body: trainedClassifiers['body'].probabilities(nbayes.stringToDoc(article['body']))
+    }
+
+    const weightedProbabilities = {
+      neutral: probablilities.title.neutral + probablilities.tags.neutral + probablilities.body.neutral,
+      positive: probablilities.title.positive + probablilities.tags.positive + probablilities.body.positive,
+      negative: probablilities.title.negative + probablilities.tags.negative + probablilities.body.negative,
+    }
+
+    classifiedArticles[articleId] = weightedProbabilities
   })
 
   // todo: find highest probability
- // const classiefiedArtieclesArray = Object.keys(classifiedArticles).map(classifiedArticle => classifiedArticle)
- const highestScore2 = Math.max.apply(Math, myArr.map(x => Math.max(x.positive || 0, x.neutral || 0, x.negative || 0)))
+  // const classiefiedArtieclesArray = Object.keys(classifiedArticles).map(classifiedArticle => classifiedArticle)
+  // const highestScore2 = Math.max.apply(Math, myArr.map(x => Math.max(x.positive || 0, x.neutral || 0, x.negative || 0)))
 
-
-
-
-
-
-  const highestProbability = Object.keys(classifiedArticles).map(key => classifiedArticles[key]).reduce((maxValue, articleProb)=>{
+  const highestProbability = Object.keys(classifiedArticles).map(key => classifiedArticles[key]).reduce((maxValue, articleProb) => {
     let localMax = maxValue
-    
-    if(articleProb.neutral > localMax){
+
+    if (articleProb.neutral > localMax) {
       localMax = articleProb.neutral
     }
 
-    if(articleProb.negative > localMax){
+    if (articleProb.negative > localMax) {
       localMax = articleProb.negative
     }
-    
-    if(articleProb.positive > localMax){
+
+    if (articleProb.positive > localMax) {
       localMax = articleProb.positive
-    }    
+    }
 
     return localMax
-  },0)
+  }, 0)
 
-  const compensationFactor = 1/highestProbability
+  const compensationFactor = 1 / highestProbability
 
 
 
@@ -154,14 +166,16 @@ const classifyArticles = (articlesToClassify, trainedClassifier) => {
   Object.keys(classifiedArticles).map(key => {
     const classifiedArticle = classifiedArticles[key]
     normalizedClassifiedArticles[key] = {
-      neutral :  classifiedArticle.neutral*compensationFactor,
-      positive :  classifiedArticle.positive*compensationFactor,
-      negative : classifiedArticle.negative*compensationFactor 
+      neutral: classifiedArticle.neutral * compensationFactor,
+      positive: classifiedArticle.positive * compensationFactor,
+      negative: classifiedArticle.negative * compensationFactor
     }
   })
 
-  console.log('normalizedClassifiedArticles', {normalizedClassifiedArticles})
-  
+  console.log('normalizedClassifiedArticles', {
+    normalizedClassifiedArticles
+  })
+
   return normalizedClassifiedArticles
 }
 
@@ -187,6 +201,12 @@ const storeVote = (articleData, vote) => {
   ls.setItem('articleVotes', localStorageArticleData)
 
   renderAllVotes()
+
+  const trainedClassifiers = trainModelOnVotedArticlesAndReturnTrainedClassifiers()
+  const classifiedArticles = classifyArticles({
+    [articleData.id]: articleData
+  }, trainedClassifiers)
+  renderAllClassificationScores(classifiedArticles)
 }
 
 
@@ -233,17 +253,19 @@ const onArticlePageLoad = () => {
   const headline = document.querySelector('h1')
   const voteButtonsElement = createArticleVoteButtonsElement(currentArticle)
   const voteResultElement = createArticleVoteResultElement(currentArticle)
+  const classificationScoreElement = createArticleClassificationScore(currentArticle)
 
   headline.appendChild(voteButtonsElement)
   headline.appendChild(voteResultElement)
+  headline.appendChild(classificationScoreElement)
 
-  storeVote(currentArticle, 0)  // if it exists, load vote, else set vote to 0
+  storeVote(currentArticle, 0) // if it exists, load vote, else set vote to 0
 }
 
 const onStartPageLoad = () => {
   const allArticlesOnPage = articleExtractor(window.__NUXT__)
 
-  const trainedClassifier = trainModelOnVotedArticlesAndReturnTrainedClassifier()
+  const trainedClassifiers = trainModelOnVotedArticlesAndReturnTrainedClassifiers()
 
   const shortenedArticleTitles = Object.keys(allArticlesOnPage).map(id => allArticlesOnPage[id].title.slice(0, 37))
   const fullArticleUrls = Object.keys(allArticlesOnPage).map(articleId => `${ID_PREFIX}/${articleId}`)
@@ -266,7 +288,7 @@ const onStartPageLoad = () => {
       link.innerHTML = voteResultElement.outerHTML + link.innerHTML + classificationScoreElement.outerHTML
     }
   })
-  const classifiedArticles = classifyArticles(allArticlesOnPage, trainedClassifier)
+  const classifiedArticles = classifyArticles(allArticlesOnPage, trainedClassifiers)
   renderAllVotes()
   renderAllClassificationScores(classifiedArticles)
 }

@@ -1,0 +1,20 @@
+{
+  "name": "private-personalization",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev" : "docker run -d -v $(pwd)/build:/var/www:ro -p 8080:8080 trinitronx/python-simplehttpserver && watchify web-plug/plug.js -o ./build/plug.js -v"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Infomaker/private-personalization.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Infomaker/private-personalization/issues"
+  },
+  "homepage": "https://github.com/Infomaker/private-personalization#readme"
+}

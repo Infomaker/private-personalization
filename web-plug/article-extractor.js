@@ -1,5 +1,3 @@
-const ID_PREFIX = 'https://24kalmar.se'
-
 /**
   If an object contains the properties slug and body we consider it an article
   Ignore ads
@@ -19,8 +17,7 @@ const convertNodeToArticle = (node) => {
   node.tags.forEach(tag => tags.add(tag.toLowerCase()))
   node.categories.forEach(category => tags.add(category.toLowerCase()))
   return {
-    id: `${ID_PREFIX}/${node.slug}`,
-    slug: node.slug,
+    id: `${node.slug}`,
     body: node.body, // TODO: Strip HTML
     title: node.headline.trim(),
     tags: Array.from(tags).join(' ')
@@ -39,7 +36,6 @@ const extractArticlesFromNode = (currentNode, articles = {}, level = 0) => {
   } else if (isArticle(currentNode)) {
     const convertedArticle = convertNodeToArticle(currentNode)
     articles[convertedArticle.id] = convertedArticle
-    delete convertedArticle.id
   } else {
     if (typeof currentNode === 'object') {
       Object.keys(currentNode).forEach(nodeKey => {
@@ -47,11 +43,8 @@ const extractArticlesFromNode = (currentNode, articles = {}, level = 0) => {
           extractArticlesFromNode(currentNode[nodeKey], articles, level + 1)
         }
       })
-    } else {
-      // Something found, but it's not an article
     }
   }
-
   return articles
 }
 

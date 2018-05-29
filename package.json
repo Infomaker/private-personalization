@@ -4,11 +4,14 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev" : "docker run -d -v $(pwd)/build:/var/www:ro -p 8080:8080 trinitronx/python-simplehttpserver && watchify web-plug/plug.js -o ./build/plug.js -v"
+    "dev": "docker run -d -v $(pwd)/build:/var/www:ro -p 8080:8080 trinitronx/python-simplehttpserver && watchify web-plug/plug.js -o ./build/plug.js -v --debug"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Infomaker/private-personalization.git"
+  },
+  "dependencies": {
+    "nbayes": "3.0.2"
   },
   "keywords": [],
   "author": "",

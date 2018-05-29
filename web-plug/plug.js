@@ -217,14 +217,14 @@ const createArticleVoteButtonsElement = (articleData) => {
   dislikeButtonElement.addEventListener('click', () => {
     storeVote(articleData, -1)
   }, false)
-  dislikeButtonElement.innerText = String('-')
+  dislikeButtonElement.innerText = String('ointressant')
 
 
   const likeButtonElement = document.createElement('button')
   likeButtonElement.addEventListener('click', () => {
     storeVote(articleData, 1)
   }, false)
-  likeButtonElement.innerText = String('+')
+  likeButtonElement.innerText = String('intressant för mig')
 
   container.appendChild(dislikeButtonElement)
   container.appendChild(likeButtonElement)

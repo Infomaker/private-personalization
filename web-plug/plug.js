@@ -17,12 +17,72 @@ if (!localStorageActive) {
 const addPluginStyle = () => {
   const styleElement = document.createElement('style')
   styleElement.textContent = `
+    .ALH_article-page-container {
+      display: block;
+    }
+
+
+    /* Vote result */
+
+    .ALH__vote-result-container {
+      border-radius: 4px;
+      background-color: #EEEEEE;
+      font-size: 0.5em;
+      padding: 0.25em;
+      position: relative;
+      top: -0.25em;
+      margin-right: 0.5em;
+    }
+
+    .ALH__vote-result {}
+
+    .ALH__vote-result.positive {
+      backgroundColor: #8BC34A;
+    }
+
+    .ALH__vote-result.negative {
+      backgroundColor: #F44336;
+    }
+
+
+    /* Classifier buttons */
+
+    .ALH__classifier-button-container {}
+
+    .ALH__classifier-button {
+      font-size: 0.5em;
+      padding: 0 0.8em;
+      line-height: 1.6em;
+      border-radius: 2px;
+      margin-right: 0.5em;
+      background: #3cb0fd;
+      background-image: linear-gradient(to bottom, #03A9F4, #039BE5);
+      border-radius: 4px;
+      color: #ffffff;
+      border: none;
+      text-decoration: none;
+    }
+
+    .ALH__classifier-button.not-interesting {}
+
+    .ALH__classifier-button.interesting {}
+
+
+    /* Classifier bar */
+
+    .ALH__classification-score-container {
+      border-radius: 4px;
+      font-size: 0.5em;
+      padding: 0.25em;
+      position: relative;
+      top: -0.25em;
+    }
+
     .ALH__classifier-container {
       height: 10px;
       width: 100px;
       box-sizing: border-box;
       display: inline-block;
-      position: absolute;
       border-radius: 0.25em;
     }
 
@@ -49,11 +109,7 @@ const addPluginStyle = () => {
 
 const createArticleClassificationScore = (article) => {
   const container = document.createElement('span')
-  container.classList.add('ALH__vote-result-container')
-  container.style.borderRadius = '4px'
-  container.style.backgroundColor = '#ffffff'
-  container.style.fontSize = '0.5em'
-  container.style.padding = '0.25em'
+  container.classList.add('ALH__classification-score-container')
 
   const classificationScoreElement = document.createElement('span')
   classificationScoreElement.classList.add('ALH__classification-score')
@@ -67,15 +123,11 @@ const createArticleClassificationScore = (article) => {
 const createArticleVoteResultElement = (article) => {
   const container = document.createElement('span')
   container.classList.add('ALH__vote-result-container')
-  container.style.borderRadius = '4px'
-  container.style.backgroundColor = '#eaeaea'
-  container.style.fontSize = '0.5em'
-  container.style.padding = '0.25em'
 
   const voteResultElement = document.createElement('span')
   voteResultElement.classList.add('ALH__vote-result')
   voteResultElement.classList.add(`ALH__article-id-${article.id}`)
-  voteResultElement.innerText = String('oläst')
+  voteResultElement.innerText = 'Oläst'
   container.appendChild(voteResultElement)
 
   return container
@@ -282,8 +334,10 @@ const storeVote = (articleData, vote) => {
 
 const createArticleVoteButtonsElement = (articleData) => {
   const container = document.createElement('span')
+  container.classList.add('ALH__classifier-button-container')
 
   const dislikeButtonElement = document.createElement('button')
+  dislikeButtonElement.classList.add('ALH__classifier-button', 'not-interesting')
   dislikeButtonElement.addEventListener('click', () => {
     storeVote(articleData, -1)
   }, false)
@@ -291,6 +345,7 @@ const createArticleVoteButtonsElement = (articleData) => {
 
 
   const likeButtonElement = document.createElement('button')
+  likeButtonElement.classList.add('ALH__classifier-button', 'interesting')
   likeButtonElement.addEventListener('click', () => {
     storeVote(articleData, 1)
   }, false)
@@ -325,9 +380,13 @@ const onArticlePageLoad = () => {
   const voteResultElement = createArticleVoteResultElement(currentArticle)
   const classificationScoreElement = createArticleClassificationScore(currentArticle)
 
-  headline.appendChild(voteButtonsElement)
-  headline.appendChild(voteResultElement)
-  headline.appendChild(classificationScoreElement)
+  const containerElement = document.createElement('span')
+  containerElement.classList.add('ALH_article-page-container')
+
+  containerElement.appendChild(voteResultElement)
+  containerElement.appendChild(voteButtonsElement)
+  containerElement.appendChild(classificationScoreElement)
+  headline.appendChild(containerElement)
 
   storeVote(currentArticle, 0) // if it exists, load vote, else set vote to 0
 }

@@ -32,15 +32,15 @@ const addPluginStyle = () => {
     }
 
     .ALH__classifier-unit.interesting {
-      background-color: green;
+      background-color: #8BC34A;
     }
 
     .ALH__classifier-unit.neutral {
-      background-color: yellow;
+      background-color: #EEEEEE;
     }
 
     .ALH__classifier-unit.not-interesting {
-      background-color: red;
+      background-color: #F44336;
     }
   `
   const headElement = document.querySelector('head')
